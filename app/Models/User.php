@@ -12,6 +12,9 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    const TYPE_BUYER = 'buyer';
+    const TYPE_SELLER = 'seller';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -21,6 +24,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'wallet_balance',
+        'is_admin',
+        'type'
     ];
 
     /**
@@ -41,5 +47,77 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'wallet_balance' => 'decimal:2',
+        'is_admin' => 'boolean',
     ];
+
+    /**
+     * Valid user roles.
+     *
+     * @var array<string>
+     */
+    public static $roles = [
+        'buyer' => 'buyer',
+        'seller' => 'seller',
+        'admin' => 'admin',
+    ];
+
+    /**
+     * Check if the user is a buyer
+     */
+    public function isBuyer(): bool
+    {
+        return $this->type === self::TYPE_BUYER;
+    }
+
+    /**
+     * Check if the user is a seller
+     */
+    public function isSeller(): bool
+    {
+        return $this->type === self::TYPE_SELLER;
+    }
+
+    /**
+     * Check if the user is an admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->is_admin === true;
+    }
+
+    /**
+     * Get the products that belong to the user.
+     */
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Transactions made by this user
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Purchased products (as buyer)
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
+     */
+    public function purchasedProducts()
+    {
+        return $this->hasManyThrough(
+            Product::class,
+            Transaction::class,
+            'user_id',
+            'id',
+            'id',
+            'product_id'
+        )->where('transactions.type', 'purchase');
+    }
 }
